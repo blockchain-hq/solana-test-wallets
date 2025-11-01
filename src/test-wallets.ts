@@ -116,4 +116,28 @@ export class TestWallets {
     this.wallets.clear();
     this.currentLabelIndex = 0;
   }
+
+  count(): number {
+    return this.wallets.size;
+  }
+
+  list(): void {
+    Array.from(this.wallets.values()).forEach((wallet) => {
+      console.log(`${wallet.label} ${wallet.publicKey.toBase58()}`);
+      console.log(`  Balance: ${wallet.getBalance()} SOL`);
+      console.log(`  Tokens: ${wallet.getTokenBalance("USDC")} USDC`);
+    });
+  }
+
+  getAll(): TestWallet[] {
+    return Array.from(this.wallets.values());
+  }
+
+  getByLabel(label: string): TestWallet {
+    const wallet = this.wallets.get(label);
+    if (!wallet) {
+      throw new Error(`Wallet ${label} not found`);
+    }
+    return wallet;
+  }
 }
