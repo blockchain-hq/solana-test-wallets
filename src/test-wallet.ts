@@ -16,11 +16,13 @@ import type { TokenManager } from "./token-manager.js";
 export class TestWallet {
   public readonly keypair: Keypair;
   public readonly publicKey: PublicKey;
+  public readonly label: string;
   private connection: Connection;
   private network: Network;
   private tokenManager: TokenManager;
 
   constructor(
+    label: string,
     keypair: Keypair,
     connection: Connection,
     network: Network,
@@ -31,6 +33,7 @@ export class TestWallet {
     this.network = network;
     this.connection = connection;
     this.tokenManager = tokenManager;
+    this.label = label;
   }
 
   async getBalance(): Promise<number> {

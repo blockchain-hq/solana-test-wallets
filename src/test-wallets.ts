@@ -6,14 +6,14 @@ import {
   type Cluster,
 } from "@solana/web3.js";
 import { TestWallet } from "./test-wallet.js";
-import type { CreateWalletConfig, Network } from "./types.js";
+import type { CreateWalletConfig, Network, WalletConfig } from "./types.js";
 import { TokenManager } from "./token-manager.js";
 
 export class TestWallets {
-  private wallets: TestWallet[] = [];
+  private wallets: Map<string, TestWallet> = new Map();
   private connection: Connection;
   private network: Network;
-  private currentIndex: number = 0;
+  private currentLabelIndex: number = 0;
   private tokenManager: TokenManager;
 
   private constructor(connection: Connection, network: Network) {
@@ -24,11 +24,9 @@ export class TestWallets {
 
   static async create(config: CreateWalletConfig = {}): Promise<TestWallets> {
     const {
-      count = 1,
       network = "localnet",
       endpoint,
-      fundSOL = 0,
-      fundTokens = {},
+      wallets = new Map<string, WalletConfig>(),
     } = config;
 
     let rpcEndpoint: string;
@@ -43,22 +41,25 @@ export class TestWallets {
 
     const manager = new TestWallets(connection, network);
 
-    for (let i = 0; i < count; i++) {
+    for (const [label, walletConfig] of wallets.entries()) {
       const keypair = Keypair.generate();
       const wallet = new TestWallet(
+        label,
         keypair,
         connection,
         network,
         manager.tokenManager
       );
-      manager.wallets.push(wallet);
+      manager.wallets.set(label, wallet);
 
-      if (fundSOL > 0) {
-        await manager.fundWalletWithSOL(wallet, fundSOL);
+      if (walletConfig.fundSOL) {
+        await manager.fundWalletWithSOL(wallet, walletConfig.fundSOL);
       }
 
-      if (Object.keys(fundTokens).length > 0) {
-        for (const [tokenSymbol, amount] of Object.entries(fundTokens)) {
+      if (walletConfig.fundTokens) {
+        for (const [tokenSymbol, amount] of Object.entries(
+          walletConfig.fundTokens
+        )) {
           await manager.fundWalletWithTokens(wallet, tokenSymbol, amount);
         }
       }
@@ -68,39 +69,28 @@ export class TestWallets {
   }
 
   static async createOne(config: CreateWalletConfig = {}): Promise<TestWallet> {
-    const manager = await TestWallets.create({ ...config, count: 1 });
-    return manager.get(0);
+    const manager = await TestWallets.create({
+      ...config,
+      wallets: new Map([["default", {}]]),
+    });
+    return manager.wallets.get("default")!;
   }
-  get(index: number): TestWallet {
-    if (index < 0 || index >= this.wallets.length) {
-      throw new Error(`Wallet index ${index} out of bounds`);
+
+  get(label: string): TestWallet {
+    const wallet = this.wallets.get(label);
+    if (!wallet) {
+      throw new Error(`Wallet ${label} not found`);
     }
-    if (!this.wallets[index]) {
-      throw new Error(`Wallet index ${index} not found`);
-    }
-    return this.wallets[index];
+    return wallet;
   }
 
   next(): TestWallet {
-    const wallet = this.wallets[this.currentIndex];
-    this.currentIndex = (this.currentIndex + 1) % this.wallets.length;
+    const wallet = Array.from(this.wallets.values())[this.currentLabelIndex];
+    this.currentLabelIndex = (this.currentLabelIndex + 1) % this.wallets.size;
     if (!wallet) {
       throw new Error("No more wallets available");
     }
     return wallet;
-  }
-
-  random(): TestWallet {
-    const randomIndex = Math.floor(Math.random() * this.wallets.length);
-    const wallet = this.wallets[randomIndex];
-    if (!wallet) {
-      throw new Error("No more wallets available");
-    }
-    return wallet;
-  }
-
-  all(): TestWallet[] {
-    return this.wallets;
   }
 
   private async fundWalletWithSOL(
@@ -123,7 +113,7 @@ export class TestWallets {
   }
 
   async dispose(): Promise<void> {
-    this.wallets = [];
-    this.currentIndex = 0;
+    this.wallets.clear();
+    this.currentLabelIndex = 0;
   }
 }
