@@ -21,3 +21,9 @@ export interface MintInfo {
 export interface TokenManagerState {
   mints: Map<string, MintInfo>;
 }
+
+export interface SerializedWallet {
+  secretKey: number[];
+  publicKey: string;
+  network: Network;
+}

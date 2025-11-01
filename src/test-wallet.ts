@@ -12,6 +12,7 @@ import {
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
 import type { TokenManager } from "./token-manager.js";
+import type { SerializedWallet } from "./types.js";
 
 export class TestWallet {
   public readonly keypair: Keypair;
@@ -123,7 +124,7 @@ export class TestWallet {
     };
   }
 
-  toJSON() {
+  toJSON(): SerializedWallet {
     return {
       secretKey: Array.from(this.keypair.secretKey),
       publicKey: this.publicKey.toBase58(),
