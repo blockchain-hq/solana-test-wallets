@@ -10,10 +10,10 @@ import type { CreateWalletConfig, Network, WalletConfig } from "./types.js";
 import { TokenManager } from "./token-manager.js";
 
 export class TestWallets {
-  private wallets: Map<string, TestWallet> = new Map();
+  private wallets: TestWallet[] = [];
   private connection: Connection;
   private network: Network;
-  private currentLabelIndex: number = 0;
+  private currentIndex: number = 0;
   private tokenManager: TokenManager;
 
   private constructor(connection: Connection, network: Network) {
@@ -44,13 +44,12 @@ export class TestWallets {
     for (const [label, walletConfig] of wallets.entries()) {
       const keypair = Keypair.generate();
       const wallet = new TestWallet(
-        label,
         keypair,
         connection,
         network,
         manager.tokenManager
       );
-      manager.wallets.set(label, wallet);
+      manager.wallets.push(wallet);
 
       if (walletConfig.fundSOL) {
         await manager.fundWalletWithSOL(wallet, walletConfig.fundSOL);
@@ -71,22 +70,17 @@ export class TestWallets {
   static async createOne(config: CreateWalletConfig = {}): Promise<TestWallet> {
     const manager = await TestWallets.create({
       ...config,
-      wallets: new Map([["default", {}]]),
+      wallets: [{ fundSOL: 0, fundTokens: {} }],
     });
-    return manager.wallets.get("default")!;
-  }
-
-  get(label: string): TestWallet {
-    const wallet = this.wallets.get(label);
-    if (!wallet) {
-      throw new Error(`Wallet ${label} not found`);
+    if (manager.wallets.length === 0) {
+      throw new Error("No wallets created");
     }
-    return wallet;
+    return manager.wallets[0]!;
   }
 
   next(): TestWallet {
-    const wallet = Array.from(this.wallets.values())[this.currentLabelIndex];
-    this.currentLabelIndex = (this.currentLabelIndex + 1) % this.wallets.size;
+    const wallet = this.wallets[this.currentIndex];
+    this.currentIndex = (this.currentIndex + 1) % this.wallets.length;
     if (!wallet) {
       throw new Error("No more wallets available");
     }
@@ -113,31 +107,23 @@ export class TestWallets {
   }
 
   async dispose(): Promise<void> {
-    this.wallets.clear();
-    this.currentLabelIndex = 0;
+    this.wallets = [];
+    this.currentIndex = 0;
   }
 
   count(): number {
-    return this.wallets.size;
+    return this.wallets.length;
   }
 
   list(): void {
-    Array.from(this.wallets.values()).forEach((wallet) => {
-      console.log(`${wallet.label} ${wallet.publicKey.toBase58()}`);
+    this.wallets.forEach((wallet) => {
+      console.log(`${wallet.publicKey.toBase58()}`);
       console.log(`  Balance: ${wallet.getBalance()} SOL`);
       console.log(`  Tokens: ${wallet.getTokenBalance("USDC")} USDC`);
     });
   }
 
   getAll(): TestWallet[] {
-    return Array.from(this.wallets.values());
-  }
-
-  getByLabel(label: string): TestWallet {
-    const wallet = this.wallets.get(label);
-    if (!wallet) {
-      throw new Error(`Wallet ${label} not found`);
-    }
-    return wallet;
+    return this.wallets;
   }
 }

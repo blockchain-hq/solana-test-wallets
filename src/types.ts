@@ -10,7 +10,7 @@ export interface WalletConfig {
 export interface CreateWalletConfig extends WalletConfig {
   network?: Network;
   endpoint?: string;
-  wallets?: Map<string, WalletConfig>;
+  wallets?: WalletConfig[];
 }
 
 export interface MintInfo {
