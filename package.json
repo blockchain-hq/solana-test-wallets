@@ -1,7 +1,7 @@
 {
   "name": "solana-test-wallets",
   "version": "0.1.0",
-  "description": "Wallet management for Solana Testing",
+  "description": "Lightweight wallet management library for Solana testing and local development",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -13,15 +13,34 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest",
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "prepublishOnly": "pnpm run build"
   },
   "keywords": [
     "solana",
     "testing",
-    "wallet"
+    "wallet",
+    "test-wallet",
+    "localnet",
+    "devnet",
+    "spl-token",
+    "web3",
+    "blockchain",
+    "crypto"
   ],
   "author": "Nirav Joshi",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blockchain-hq/solana-test-wallets"
+  },
+  "bugs": {
+    "url": "https://github.com/blockchain-hq/solana-test-wallets/issues"
+  },
+  "homepage": "https://github.com/blockchain-hq/solana-test-wallets#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "dependencies": {
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4"

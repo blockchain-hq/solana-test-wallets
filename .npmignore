@@ -1,0 +1,32 @@
+# Source files
+src/
+test.ts
+tsconfig.json
+
+# Development files
+.git/
+.gitignore
+node_modules/
+pnpm-lock.yaml
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__/
+coverage/
+
+# Development artifacts
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Test wallets (generated during development)
+test-wallets.json
+first-wallet.json
+*.json
+!package.json
+
+# TypeScript build info
+*.tsbuildinfo
+
