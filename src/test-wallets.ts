@@ -6,8 +6,14 @@ import {
   type Cluster,
 } from "@solana/web3.js";
 import { TestWallet } from "./test-wallet.js";
-import type { CreateWalletConfig, Network, WalletConfig } from "./types.js";
+import type {
+  CreateWalletConfig,
+  Network,
+  SerializedWalletCollection,
+} from "./types.js";
 import { TokenManager } from "./token-manager.js";
+import fs from "fs";
+import { VERSION } from "./config.js";
 
 export class TestWallets {
   private wallets: TestWallet[] = [];
@@ -26,7 +32,10 @@ export class TestWallets {
     const {
       network = "localnet",
       endpoint,
-      wallets = new Map<string, WalletConfig>(),
+      label = "default",
+      count = 1,
+      fundSOL = 0,
+      fundTokens = {},
     } = config;
 
     let rpcEndpoint: string;
@@ -41,7 +50,7 @@ export class TestWallets {
 
     const manager = new TestWallets(connection, network);
 
-    for (const [label, walletConfig] of wallets.entries()) {
+    for (let i = 0; i < count; i++) {
       const keypair = Keypair.generate();
       const wallet = new TestWallet(
         keypair,
@@ -51,15 +60,15 @@ export class TestWallets {
       );
       manager.wallets.push(wallet);
 
-      if (walletConfig.fundSOL) {
-        await manager.fundWalletWithSOL(wallet, walletConfig.fundSOL);
+      if (fundSOL && fundSOL > 0) {
+        await manager.fundWalletWithSOL(wallet, fundSOL);
       }
 
-      if (walletConfig.fundTokens) {
-        for (const [tokenSymbol, amount] of Object.entries(
-          walletConfig.fundTokens
-        )) {
-          await manager.fundWalletWithTokens(wallet, tokenSymbol, amount);
+      if (fundTokens && Object.keys(fundTokens).length > 0) {
+        for (const [tokenSymbol, amount] of Object.entries(fundTokens)) {
+          if (amount && amount > 0) {
+            await manager.fundWalletWithTokens(wallet, tokenSymbol, amount);
+          }
         }
       }
     }
@@ -67,10 +76,106 @@ export class TestWallets {
     return manager;
   }
 
+  static async loadFromFile(filename: string): Promise<TestWallets> {
+    // check if file exists
+    if (!fs.existsSync(filename)) {
+      throw new Error(`File ${filename} does not exist`);
+    }
+
+    const content = fs.readFileSync(filename, "utf8");
+    const data: SerializedWalletCollection = JSON.parse(content);
+
+    const rpcEndpoint =
+      data.network === "localnet"
+        ? "http://127.0.0.1:8899"
+        : clusterApiUrl(data.network as Cluster);
+
+    const connection = new Connection(rpcEndpoint, "confirmed");
+    const manager = new TestWallets(connection, data.network);
+
+    for (const serializedWallet of data.wallets) {
+      const keypair = Keypair.fromSecretKey(
+        Uint8Array.from(serializedWallet.secretKey)
+      );
+
+      const wallet = new TestWallet(
+        keypair,
+        connection,
+        data.network,
+        manager.tokenManager
+      );
+      manager.wallets.push(wallet);
+    }
+
+    return manager;
+  }
+
+  static async loadWalletFromFile(
+    filename: string,
+    network: Network
+  ): Promise<TestWallets> {
+    const content = fs.readFileSync(filename, "utf8");
+    const secretKey = Uint8Array.from(JSON.parse(content));
+    const keypair = Keypair.fromSecretKey(secretKey);
+
+    const rpcEndpoint =
+      network === "localnet"
+        ? "http://127.0.0.1:8899"
+        : clusterApiUrl(network as Cluster);
+    const connection = new Connection(rpcEndpoint, "confirmed");
+    const manager = new TestWallets(connection, network);
+    const wallet = new TestWallet(
+      keypair,
+      connection,
+      network,
+      manager.tokenManager
+    );
+    manager.wallets.push(wallet);
+    return manager;
+  }
+
+  static async loadWalletFromFiles(
+    filenames: string[],
+    network: Network
+  ): Promise<TestWallets> {
+    if (filenames.length === 0) {
+      throw new Error("No filenames provided");
+    }
+    const manager = await TestWallets.loadWalletFromFile(
+      filenames[0]!,
+      network
+    );
+    for (const filename of filenames.slice(1)) {
+      const wallet = await TestWallets.loadWalletFromFile(filename, network);
+      manager.wallets.push(...wallet.wallets);
+    }
+    return manager;
+  }
+
+  async saveToFile(filename: string): Promise<void> {
+    const data: SerializedWalletCollection = {
+      version: VERSION,
+      network: this.network,
+      wallets: this.wallets.map((wallet) => wallet.toJSON()),
+    };
+
+    fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+  }
+
+  async saveWalletToFile(filename: string, index: number): Promise<void> {
+    const wallet = this.wallets[index];
+    if (!wallet) {
+      throw new Error(`Wallet at index ${index} not found`);
+    }
+
+    const secretKey = Array.from(wallet.keypair.secretKey);
+    fs.writeFileSync(filename, JSON.stringify(secretKey, null, 2));
+  }
+
   static async createOne(config: CreateWalletConfig = {}): Promise<TestWallet> {
     const manager = await TestWallets.create({
       ...config,
-      wallets: [{ fundSOL: 0, fundTokens: {} }],
+      count: 1,
     });
     if (manager.wallets.length === 0) {
       throw new Error("No wallets created");
@@ -115,12 +220,22 @@ export class TestWallets {
     return this.wallets.length;
   }
 
-  list(): void {
-    this.wallets.forEach((wallet) => {
+  async list(): Promise<void> {
+    for (const wallet of this.wallets) {
       console.log(`${wallet.publicKey.toBase58()}`);
-      console.log(`  Balance: ${wallet.getBalance()} SOL`);
-      console.log(`  Tokens: ${wallet.getTokenBalance("USDC")} USDC`);
-    });
+      console.log(`  Balance: ${await wallet.getBalance()} SOL`);
+      console.log(`  Tokens: ${await wallet.getTokenBalance("USDC")} USDC`);
+    }
+  }
+
+  async getAllBalances(): Promise<void> {
+    for (const wallet of this.wallets) {
+      const balance = await wallet.getBalance();
+      const usdcBalance = await wallet.getTokenBalance("USDC");
+      console.log(
+        `${wallet.publicKey.toBase58()}: ${balance} SOL, ${usdcBalance} USDC`
+      );
+    }
   }
 
   getAll(): TestWallet[] {

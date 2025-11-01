@@ -8,9 +8,10 @@ export interface WalletConfig {
 }
 
 export interface CreateWalletConfig extends WalletConfig {
+  label?: string;
+  count?: number;
   network?: Network;
   endpoint?: string;
-  wallets?: WalletConfig[];
 }
 
 export interface MintInfo {
@@ -25,5 +26,11 @@ export interface TokenManagerState {
 export interface SerializedWallet {
   secretKey: number[];
   publicKey: string;
+  network: Network;
+}
+
+export interface SerializedWalletCollection {
+  version: string;
+  wallets: SerializedWallet[];
   network: Network;
 }
