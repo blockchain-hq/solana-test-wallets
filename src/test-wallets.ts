@@ -7,16 +7,19 @@ import {
 } from "@solana/web3.js";
 import { TestWallet } from "./test-wallet.js";
 import type { CreateWalletConfig, Network } from "./types.js";
+import { TokenManager } from "./token-manager.js";
 
 export class TestWallets {
   private wallets: TestWallet[] = [];
   private connection: Connection;
   private network: Network;
   private currentIndex: number = 0;
+  private tokenManager: TokenManager;
 
   private constructor(connection: Connection, network: Network) {
     this.connection = connection;
     this.network = network;
+    this.tokenManager = new TokenManager(connection, network);
   }
 
   static async create(config: CreateWalletConfig = {}): Promise<TestWallets> {
@@ -42,14 +45,23 @@ export class TestWallets {
 
     for (let i = 0; i < count; i++) {
       const keypair = Keypair.generate();
-      const wallet = new TestWallet(keypair, connection, network);
+      const wallet = new TestWallet(
+        keypair,
+        connection,
+        network,
+        manager.tokenManager
+      );
       manager.wallets.push(wallet);
 
       if (fundSOL > 0) {
         await manager.fundWalletWithSOL(wallet, fundSOL);
       }
 
-      // TODO: fund with tokens
+      if (Object.keys(fundTokens).length > 0) {
+        for (const [tokenSymbol, amount] of Object.entries(fundTokens)) {
+          await manager.fundWalletWithTokens(wallet, tokenSymbol, amount);
+        }
+      }
     }
 
     return manager;
@@ -100,6 +112,14 @@ export class TestWallets {
       amount * LAMPORTS_PER_SOL
     );
     await this.connection.confirmTransaction(sig, "confirmed");
+  }
+
+  async fundWalletWithTokens(
+    wallet: TestWallet,
+    tokenSymbol: string,
+    amount: number
+  ): Promise<void> {
+    await this.tokenManager.fundWalletWithTokens(wallet, tokenSymbol, amount);
   }
 
   async dispose(): Promise<void> {

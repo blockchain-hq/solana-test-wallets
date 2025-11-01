@@ -1,3 +1,5 @@
+import type { Keypair, PublicKey } from "@solana/web3.js";
+
 export type Network = "localnet" | "devnet" | "testnet" | "mainnet-beta";
 
 export interface WalletConfig {
@@ -10,4 +12,13 @@ export interface WalletConfig {
 export interface CreateWalletConfig extends WalletConfig {
   count?: number;
   label?: string;
+}
+
+export interface MintInfo {
+  address: PublicKey;
+  authority: Keypair;
+}
+
+export interface TokenManagerState {
+  mints: Map<string, MintInfo>;
 }

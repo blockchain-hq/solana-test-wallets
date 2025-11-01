@@ -6,6 +6,9 @@ const test = async () => {
   const wallets = await TestWallets.create({
     count: 3,
     fundSOL: 2,
+    fundTokens: {
+      USDC: 100,
+    },
     network: "localnet",
   });
 
@@ -27,6 +30,9 @@ const test = async () => {
   // check balance
   const balance1 = await wallet1.getBalance();
   console.log(`Balance 1: ${balance1} SOL`);
+
+  const usdcBalance1 = await wallet1.getTokenBalance("USDC");
+  console.log(`USDC Balance 1: ${usdcBalance1}`);
 };
 
 test().catch(console.error);

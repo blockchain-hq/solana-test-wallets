@@ -11,18 +11,26 @@ import {
   getAccount,
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
+import type { TokenManager } from "./token-manager.js";
 
 export class TestWallet {
   public readonly keypair: Keypair;
   public readonly publicKey: PublicKey;
   private connection: Connection;
   private network: Network;
+  private tokenManager: TokenManager;
 
-  constructor(keypair: Keypair, connection: Connection, network: Network) {
+  constructor(
+    keypair: Keypair,
+    connection: Connection,
+    network: Network,
+    tokenManager: TokenManager
+  ) {
     this.keypair = keypair;
     this.publicKey = keypair.publicKey;
     this.network = network;
     this.connection = connection;
+    this.tokenManager = tokenManager;
   }
 
   async getBalance(): Promise<number> {
@@ -86,9 +94,19 @@ export class TestWallet {
   }
 
   private resolveMint(tokenMintOrSymbol: string): PublicKey {
-    const knownTokens: Record<string, string> = {};
+    if (this.network === "localnet") {
+      const mintInfo = this.tokenManager.getMintInfo(tokenMintOrSymbol);
+      if (mintInfo) {
+        return mintInfo.address;
+      }
+    }
+
+    const knownTokens: Record<string, string> = {
+      USDC: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    };
 
     const mintAddress = knownTokens[tokenMintOrSymbol] || tokenMintOrSymbol;
+
     if (!mintAddress) {
       throw new Error(`Unknown token: ${tokenMintOrSymbol}`);
     }
