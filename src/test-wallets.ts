@@ -107,6 +107,10 @@ export class TestWallets {
       manager.wallets.push(wallet);
     }
 
+    if (data.mints && Object.keys(data.mints).length > 0) {
+      manager.tokenManager.updateMints(data.mints);
+    }
+
     return manager;
   }
 
@@ -124,6 +128,7 @@ export class TestWallets {
         : clusterApiUrl(network as Cluster);
     const connection = new Connection(rpcEndpoint, "confirmed");
     const manager = new TestWallets(connection, network);
+
     const wallet = new TestWallet(
       keypair,
       connection,
@@ -157,6 +162,7 @@ export class TestWallets {
       version: VERSION,
       network: this.network,
       wallets: this.wallets.map((wallet) => wallet.toJSON()),
+      mints: this.tokenManager.getMints(),
     };
 
     fs.writeFileSync(filename, JSON.stringify(data, null, 2));

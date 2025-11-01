@@ -4,7 +4,7 @@ import {
   type Connection,
   PublicKey,
 } from "@solana/web3.js";
-import type { MintInfo, Network } from "./types.js";
+import type { MintInfo, Network, SerializedMintInfo } from "./types.js";
 import type { TestWallet } from "./test-wallet.js";
 import {
   createMint,
@@ -94,5 +94,32 @@ export class TokenManager {
 
   getMintInfo(tokenSymbol: string): MintInfo | null {
     return this.mints.get(tokenSymbol) || null;
+  }
+
+  getMints(): Record<string, SerializedMintInfo> {
+    const mints: Record<string, SerializedMintInfo> = {};
+    for (const [symbol, info] of this.mints.entries()) {
+      mints[symbol] = {
+        address: info.address.toBase58(),
+        authority: Array.from(info.authority.secretKey),
+      };
+    }
+    return mints;
+  }
+
+  updateMints(mints: Record<string, SerializedMintInfo>) {
+    for (const [symbol, mintInfo] of Object.entries(mints)) {
+      this.mints.set(symbol, {
+        address: this.deserializeMintInfo(mintInfo).address,
+        authority: this.deserializeMintInfo(mintInfo).authority,
+      });
+    }
+  }
+
+  private deserializeMintInfo(mintInfo: SerializedMintInfo): MintInfo {
+    return {
+      address: new PublicKey(mintInfo.address),
+      authority: Keypair.fromSecretKey(Uint8Array.from(mintInfo.authority)),
+    };
   }
 }

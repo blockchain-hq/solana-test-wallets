@@ -29,8 +29,14 @@ export interface SerializedWallet {
   network: Network;
 }
 
+export interface SerializedMintInfo {
+  address: string;
+  authority: number[];
+}
+
 export interface SerializedWalletCollection {
   version: string;
   wallets: SerializedWallet[];
   network: Network;
+  mints: Record<string, SerializedMintInfo>;
 }
